@@ -13,9 +13,8 @@ export default function Ventas() {
 
   async function cargarVentas() {
     setCargando(true)
-    const { data, error } = await supabase
-      .from('ventas')
-      .select('*, clientes(nombre), almacenes(nombre)')
+    const { data, error } = await supabase.from('ventas')
+      .select('*, clientes(nombre), almacenes(nombre), usuarios(nombre)')
       .order('fecha', { ascending: false })
       .limit(100)
     if (error) console.error(error)
@@ -73,6 +72,7 @@ export default function Ventas() {
               <th style={th}>Comprobante</th>
               <th style={th}>Forma de pago</th>
               <th style={th}>Total</th>
+              <th style={th}>Vendedor</th>
             </tr>
           </thead>
           <tbody>
@@ -101,6 +101,7 @@ export default function Ventas() {
                   <td style={{ ...td, fontWeight: 'bold', color: '#2ecc71' }}>
                     S/ {v.total?.toFixed(2)}
                   </td>
+                  <td style={td}>{v.usuarios?.nombre || '—'}</td>
                 </tr>
               ))
             )}

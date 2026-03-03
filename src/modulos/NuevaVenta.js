@@ -15,15 +15,21 @@ export default function NuevaVenta() {
     cliente_id: '',
     tipo_comprobante: 'ticket',
     forma_pago: 'efectivo',
+    descuento: 0,
+    motivo_descuento: '',
+    usuario_id: '',
   })
   const [modalProducto, setModalProducto] = useState(null)
+  const [usuarios, setUsuarios] = useState([])
 
   useEffect(() => {
     async function cargarDatos() {
       const [{ data: alms }, { data: clis }, { data: cfg }] = await Promise.all([
         supabase.from('almacenes').select('*'),
         supabase.from('clientes').select('*').order('nombre'),
-        supabase.from('configuracion').select('*')
+        supabase.from('configuracion').select('*'),
+        supabase.from('usuarios').select('id, nombre').eq('activo', true).order('nombre')
+          .then(({ data }) => setUsuarios(data || []))
       ])
       setAlmacenes(alms || [])
       setClientes(clis || [])
@@ -85,11 +91,17 @@ export default function NuevaVenta() {
     setItems(items.filter((_, i) => i !== index))
   }
 
-  const total = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  // const total = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  const descuento = parseFloat(form.descuento) || 0
+  const total = subtotal - descuento
 
   async function handleGuardar() {
     if (!form.almacen_id) { alert('Selecciona un almacén'); return }
     if (items.length === 0) { alert('Agrega al menos un producto'); return }
+    if (parseFloat(form.descuento) > 0 && !form.motivo_descuento) {
+      alert('Escribe el motivo del descuento'); return
+    }
     setGuardando(true)
 
     const { data: venta, error: errorVenta } = await supabase
@@ -100,7 +112,11 @@ export default function NuevaVenta() {
         tipo_comprobante: form.tipo_comprobante,
         forma_pago: form.forma_pago,
         total: total,
-        estado: 'completada'
+        estado: 'completada',
+        descuento: descuento,
+        motivo_descuento: form.motivo_descuento || null,
+        usuario_id: form.usuario_id || null,
+        total: total,  // ya usa el total con descuento
       }])
       .select()
       .single()
@@ -201,6 +217,35 @@ export default function NuevaVenta() {
               <option value="tarjeta">Tarjeta</option>
             </select>
           </Campo>
+
+          <Campo label="Vendedor">
+            <select value={form.usuario_id} onChange={e => setForm({ ...form, usuario_id: e.target.value })} style={input}>
+              <option value="">Sin asignar</option>
+              {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+            </select>
+          </Campo>
+
+          <Campo label="Descuento (S/)">
+            <input
+              type="number"
+              value={form.descuento}
+              onChange={e => setForm({ ...form, descuento: e.target.value })}
+              style={input}
+              placeholder="0.00"
+              min="0"
+            />
+          </Campo>
+
+          {parseFloat(form.descuento) > 0 && (
+            <Campo label="Motivo del descuento *">
+              <input
+                value={form.motivo_descuento}
+                onChange={e => setForm({ ...form, motivo_descuento: e.target.value })}
+                style={input}
+                placeholder="Ej: Cliente frecuente, producto dañado, negociación"
+              />
+            </Campo>
+          )}
         </div>
 
         {/* BUSCADOR DE PRODUCTOS */}
@@ -256,6 +301,7 @@ export default function NuevaVenta() {
                 <th style={th}></th>
               </tr>
             </thead>
+
             <tbody>
               {items.map((item, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
@@ -285,12 +331,14 @@ export default function NuevaVenta() {
                         }}
                         style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >−</button>
+
                       <input
                         type="number"
                         value={item.cantidad}
                         onChange={e => actualizarItem(i, 'cantidad', e.target.value)}
                         style={{ width: '55px', padding: '5px', border: '1px solid #ddd', borderRadius: '6px', textAlign: 'center', fontSize: '14px' }}
                       />
+
                       <button
                         onClick={() => actualizarItem(i, 'cantidad', parseFloat(item.cantidad) + 1)}
                         style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -321,13 +369,33 @@ export default function NuevaVenta() {
             </tbody>
           </table>
 
-          <div style={{ padding: '16px 24px', background: '#f9f9f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* <div style={{ padding: '16px 24px', background: '#f9f9f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '13px', color: '#888' }}>{items.length} producto(s) en el carrito</span>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <span style={{ fontSize: '16px', color: '#555' }}>Total:</span>
               <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f3460' }}>S/ {total.toFixed(2)}</span>
             </div>
+          </div> */}
+
+          <div style={{ padding: '16px 24px', background: '#f9f9f9' }}>
+            {descuento > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#888' }}>Subtotal:</span>
+                <span style={{ fontSize: '14px', color: '#555' }}>S/ {subtotal.toFixed(2)}</span>
+              </div>
+            )}
+            {descuento > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#e74c3c' }}>Descuento:</span>
+                <span style={{ fontSize: '14px', color: '#e74c3c' }}>- S/ {descuento.toFixed(2)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '16px', color: '#555' }}>Total:</span>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f3460' }}>S/ {total.toFixed(2)}</span>
+            </div>
           </div>
+
         </div>
       )}
 
