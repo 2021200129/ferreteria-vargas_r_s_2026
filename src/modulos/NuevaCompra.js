@@ -45,7 +45,7 @@ export default function NuevaCompra() {
     supabase
       .from('productos')
       .select('*')
-      .or(`nombre.ilike.%${busqueda}%,codigo.ilike.%${busqueda}%`)
+      .or(`nombre.ilike.%${busqueda}%,codigo.ilike.%${busqueda}%,codigo_barras.ilike.%${busqueda}%`)
       .limit(8)
       .then(({ data }) => setProductosSugeridos(data || []))
   }, [busqueda])

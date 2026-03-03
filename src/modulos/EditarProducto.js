@@ -100,6 +100,9 @@ export default function EditarProducto() {
         <Seccion titulo="Identificación">
           <div style={grid2}>
             <Campo label="Código *"><input name="codigo" value={form.codigo || ''} onChange={handleChange} style={input} /></Campo>
+            <Campo label="Código de barras (EAN)">
+              <input name="codigo_barras" value={form.codigo_barras || ''} onChange={handleChange} style={input} placeholder="Escanea o escribe el EAN" />
+            </Campo>
             <Campo label="Nombre *"><input name="nombre" value={form.nombre || ''} onChange={handleChange} style={input} /></Campo>
             <Campo label="Marca"><input name="marca" value={form.marca || ''} onChange={handleChange} style={input} /></Campo>
             <Campo label="Categoría">
