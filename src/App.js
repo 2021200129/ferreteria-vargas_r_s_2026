@@ -25,6 +25,8 @@ import Usuarios from './modulos/Usuarios'
 import Login from './modulos/Login'
 import Exportacion from './modulos/Exportacion'
 import Caja from './modulos/Caja'
+import { usePermiso } from './context/AuthContext'
+import RutaProtegida from './componentes/RutaProtegida'
 
 const MODULOS = [
   { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
@@ -50,6 +52,13 @@ function Layout() {
   const { usuario, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { puede, modulosPermitidos } = usePermiso()
+
+  const modulosVisibles = MODULOS.filter(m => {
+    const permitidos = modulosPermitidos()
+    if (permitidos === null) return true
+    return permitidos.includes(m.id)
+  })
 
   if (!usuario) return <Login />
 
@@ -78,7 +87,7 @@ function Layout() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {MODULOS.map(m => (
+          {modulosVisibles.map(m => (
             <button
               key={m.id}
               onClick={() => navigate(m.ruta)}
@@ -146,6 +155,31 @@ function Layout() {
           <Route path="/usuarios"               element={<Usuarios />} />
           <Route path="/exportacion" element={<Exportacion />} />
           <Route path="/caja" element={<Caja />} />
+
+          <Route path="/reportes" element={
+            <RutaProtegida modulo="reportes"><Reportes /></RutaProtegida>
+          } />
+          <Route path="/exportacion" element={
+            <RutaProtegida modulo="exportacion"><Exportacion /></RutaProtegida>
+          } />
+          <Route path="/usuarios" element={
+            <RutaProtegida modulo="usuarios"><Usuarios /></RutaProtegida>
+          } />
+          <Route path="/configuracion" element={
+            <RutaProtegida modulo="configuracion"><Configuracion /></RutaProtegida>
+          } />
+          <Route path="/cuentas-por-cobrar" element={
+            <RutaProtegida modulo="cuentas-cobrar"><CuentasPorCobrar /></RutaProtegida>
+          } />
+          <Route path="/cuentas-por-pagar" element={
+            <RutaProtegida modulo="cuentas-pagar"><CuentasPorPagar /></RutaProtegida>
+          } />
+          <Route path="/kardex" element={
+            <RutaProtegida modulo="kardex"><Kardex /></RutaProtegida>
+          } />
+          <Route path="/transferencias" element={
+            <RutaProtegida modulo="transferencias"><Transferencias /></RutaProtegida>
+          } />
         </Routes>
       </div>
 

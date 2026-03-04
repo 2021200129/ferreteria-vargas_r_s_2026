@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { usePermiso } from '../context/AuthContext'
+
+
 
 export default function Productos() {
   const [productos, setProductos] = useState([])
@@ -13,6 +16,8 @@ export default function Productos() {
   const [almacenes, setAlmacenes] = useState([])
   const [almacenAjuste, setAlmacenAjuste] = useState('')
   const [guardandoAjuste, setGuardandoAjuste] = useState(false)
+
+  const { puede } = usePermiso()
 
   useEffect(() => {
     cargarProductos()
@@ -141,6 +146,9 @@ export default function Productos() {
                 <th style={th}>Stock</th>
                 <th style={th}>P. Menor</th>
                 <th style={th}>P. Mayor</th>
+                {puede('reportes') && (
+                  <th style={th}>P. Compra</th>
+                )}
                 <th style={th}>Mín.</th>
                 <th style={th}>Ubicación</th>
                 <th style={th}>Acciones</th>
@@ -181,6 +189,9 @@ export default function Productos() {
                           ? `S/ ${parseFloat(p.precio_venta_mayor).toFixed(2)}`
                           : '—'}
                       </td>
+                      {puede('reportes') && (
+                        <td style={td}>S/ {parseFloat(p.precio_compra || 0).toFixed(2)}</td>
+                      )}
                       <td style={td}>{p.stock_minimo || '—'}</td>
                       <td style={td}>{p.ubicacion || '—'}</td>
                       <td style={td}>

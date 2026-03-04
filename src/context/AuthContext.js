@@ -30,3 +30,28 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext)
 }
+
+export function usePermiso() {
+  const { usuario } = useContext(AuthContext)
+  const rol = usuario?.rol || ''
+
+  const permisos = {
+    admin:      ['*'],
+    vendedor:   ['dashboard', 'ventas', 'compras', 'cotizaciones', 'clientes', 'productos', 'caja'],
+    almacenero: ['dashboard', 'productos', 'transferencias', 'kardex'],
+    contador:   ['dashboard', 'reportes', 'exportacion', 'cuentas-cobrar', 'cuentas-pagar'],
+  }
+
+  function puede(modulo) {
+    const lista = permisos[rol] || []
+    return lista.includes('*') || lista.includes(modulo)
+  }
+
+  function modulosPermitidos() {
+    const lista = permisos[rol] || []
+    if (lista.includes('*')) return null
+    return lista
+  }
+
+  return { puede, modulosPermitidos, rol }
+}
