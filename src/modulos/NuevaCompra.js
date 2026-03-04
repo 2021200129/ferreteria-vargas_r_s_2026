@@ -25,6 +25,32 @@ export default function NuevaCompra() {
   const [costoFlete, setCostoFlete] = useState(0)
   const [costoAdicional, setCostoAdicional] = useState(0)
   const [detalleAdicional, setDetalleAdicional] = useState('')
+  const [lotesItems, setLotesItems] = useState({})
+
+  async function agregarProducto(p) {
+    const existe = items.find(i => i.producto_id === p.id)
+    if (existe) {
+      setItems(items.map(i => i.producto_id === p.id ? { ...i, cantidad: i.cantidad + 1 } : i))
+    } else {
+      setItems([...items, {
+        producto_id: p.id,
+        nombre: p.nombre,
+        codigo: p.codigo,
+        unidad_medida: p.unidad_medida,
+        cantidad: 1,
+        precio_unitario: p.precio_compra || 0,
+        tiene_vencimiento: p.tiene_vencimiento || false,
+      }])
+      if (p.tiene_vencimiento) {
+        setLotesItems(prev => ({
+          ...prev,
+          [p.id]: { numero_lote: '', fecha_vencimiento: '' }
+        }))
+      }
+    }
+    setBusqueda('')
+    setProductosSugeridos([])
+  }
 
   async function obtenerTipoCambio() {
     setCargandoTC(true)
@@ -111,6 +137,7 @@ export default function NuevaCompra() {
     if (!form.almacen_id) { alert('Selecciona un almacén'); return }
     if (items.length === 0) { alert('Agrega al menos un producto'); return }
     if (moneda === 'USD' && !tipoCambio) { alert('Ingresa el tipo de cambio'); return }
+    
     setGuardando(true)
 
     const { data: compra, error } = await supabase.from('compras').insert([{
@@ -200,6 +227,22 @@ export default function NuevaCompra() {
             .update({ precio_compra: costoUnitarioConFlete })
             .eq('id', item.producto_id)
         }
+      }
+
+      // Crear lote si el producto tiene vencimiento
+      if (item.tiene_vencimiento && lotesItems[item.producto_id]) {
+        const loteData = lotesItems[item.producto_id]
+        await supabase.from('lotes').insert([{
+          producto_id: item.producto_id,
+          almacen_id: form.almacen_id,
+          compra_id: compra.id,
+          numero_lote: loteData.numero_lote || null,
+          fecha_vencimiento: loteData.fecha_vencimiento || null,
+          cantidad_inicial: parseFloat(item.cantidad),
+          cantidad_actual: parseFloat(item.cantidad),
+          costo_unitario: costoUnitarioConFlete,
+          estado: 'activo'
+        }])
       }
     }
 
@@ -359,49 +402,79 @@ export default function NuevaCompra() {
             </thead>
             <tbody>
               {items.map((item, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={td}>{item.nombre}</td>
-                  <td style={td}>{item.unidad_medida}</td>
-                  <td style={td}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button
-                        onClick={() => {
-                          const nueva = parseFloat(item.cantidad) - 1
-                          if (nueva <= 0) eliminarItem(i)
-                          else actualizarItem(i, 'cantidad', nueva)
-                        }}
-                        style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px' }}
-                      >−</button>
+                <>
+                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={td}>{item.nombre}</td>
+                    <td style={td}>{item.unidad_medida}</td>
+                    <td style={td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => {
+                            const nueva = parseFloat(item.cantidad) - 1
+                            if (nueva <= 0) eliminarItem(i)
+                            else actualizarItem(i, 'cantidad', nueva)
+                          }}
+                          style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                        >−</button>
+                        <input
+                          type="number"
+                          value={item.cantidad}
+                          onChange={e => actualizarItem(i, 'cantidad', e.target.value)}
+                          style={{ width: '55px', padding: '5px', border: '1px solid #ddd', borderRadius: '6px', textAlign: 'center', fontSize: '14px' }}
+                        />
+                        <button
+                          onClick={() => actualizarItem(i, 'cantidad', parseFloat(item.cantidad) + 1)}
+                          style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                        >+</button>
+                      </div>
+                    </td>
+                    <td style={td}>
                       <input
                         type="number"
-                        value={item.cantidad}
-                        onChange={e => actualizarItem(i, 'cantidad', e.target.value)}
-                        style={{ width: '55px', padding: '5px', border: '1px solid #ddd', borderRadius: '6px', textAlign: 'center', fontSize: '14px' }}
+                        value={item.precio_unitario}
+                        onChange={e => actualizarItem(i, 'precio_unitario', e.target.value)}
+                        style={{ width: '90px', padding: '6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
                       />
+                    </td>
+                    <td style={{ ...td, fontWeight: 'bold' }}>
+                      S/ {(parseFloat(item.cantidad) * parseFloat(item.precio_unitario) || 0).toFixed(2)}
+                    </td>
+                    <td style={td}>
                       <button
-                        onClick={() => actualizarItem(i, 'cantidad', parseFloat(item.cantidad) + 1)}
-                        style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px' }}
-                      >+</button>
-                    </div>
-                  </td>
-                  <td style={td}>
-                    <input
-                      type="number"
-                      value={item.precio_unitario}
-                      onChange={e => actualizarItem(i, 'precio_unitario', e.target.value)}
-                      style={{ width: '90px', padding: '6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                    />
-                  </td>
-                  <td style={{ ...td, fontWeight: 'bold' }}>
-                    S/ {(parseFloat(item.cantidad) * parseFloat(item.precio_unitario) || 0).toFixed(2)}
-                  </td>
-                  <td style={td}>
-                    <button
-                      onClick={() => eliminarItem(i)}
-                      style={{ background: '#fee', border: '1px solid #fcc', color: '#e74c3c', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
-                    >🗑 Quitar</button>
-                  </td>
-                </tr>
+                        onClick={() => eliminarItem(i)}
+                        style={{ background: '#fee', border: '1px solid #fcc', color: '#e74c3c', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+                      >🗑 Quitar</button>
+                    </td>
+                  </tr>
+
+                  {item.tiene_vencimiento && (
+                    <tr key={`lote-${i}`} style={{ background: '#fffbf0' }}>
+                      <td colSpan={2} style={{ padding: '6px 16px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: '#f39c12', whiteSpace: 'nowrap' }}>🏷️ Lote:</span>
+                          <input
+                            value={lotesItems[item.producto_id]?.numero_lote || ''}
+                            onChange={e => setLotesItems(prev => ({ ...prev, [item.producto_id]: { ...prev[item.producto_id], numero_lote: e.target.value } }))}
+                            placeholder="Número de lote (opcional)"
+                            style={{ ...input, padding: '5px 8px', fontSize: '12px' }}
+                          />
+                        </div>
+                      </td>
+                      <td colSpan={3} style={{ padding: '6px 16px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: '#f39c12', whiteSpace: 'nowrap' }}>📅 Vence:</span>
+                          <input
+                            type="date"
+                            value={lotesItems[item.producto_id]?.fecha_vencimiento || ''}
+                            onChange={e => setLotesItems(prev => ({ ...prev, [item.producto_id]: { ...prev[item.producto_id], fecha_vencimiento: e.target.value } }))}
+                            style={{ ...input, padding: '5px 8px', fontSize: '12px' }}
+                          />
+                        </div>
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>

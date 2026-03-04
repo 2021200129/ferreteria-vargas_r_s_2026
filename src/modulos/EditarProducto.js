@@ -139,6 +139,14 @@ export default function EditarProducto() {
             </Campo>
             <Campo label="Ubicación en almacén"><input name="ubicacion" value={form.ubicacion || ''} onChange={handleChange} style={input} placeholder="Ej: Pasillo 3, Estante B" /></Campo>
             <Campo label="Stock mínimo"><input name="stock_minimo" type="number" value={form.stock_minimo || 0} onChange={handleChange} style={input} /></Campo>
+            <Campo label="¿Controla vencimiento?">
+              <select name="tiene_vencimiento" value={form.tiene_vencimiento ? 'true' : 'false'}
+                onChange={e => setForm({ ...form, tiene_vencimiento: e.target.value === 'true' })}
+                style={input}>
+                <option value="false">No</option>
+                <option value="true">Sí (pinturas, pegamentos, aditivos)</option>
+              </select>
+            </Campo>
           </div>
         </Seccion>
 

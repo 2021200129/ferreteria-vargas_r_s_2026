@@ -30,6 +30,7 @@ import RutaProtegida from './componentes/RutaProtegida'
 
 import Auditoria from './modulos/Auditoria'
 import NotaCredito from './modulos/NotaCredito'
+import Vencimientos from './modulos/Vencimientos'
 
 const MODULOS = [
   { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
@@ -46,6 +47,7 @@ const MODULOS = [
   { id: 'caja', label: '🏧 Caja', ruta: '/caja' },
   { id: 'transferencias', label: '🔄 Transferencias',  ruta: '/transferencias' },
   { id: 'kardex',         label: '📋 Kardex',          ruta: '/kardex' },
+  { id: 'vencimientos', label: '📅 Vencimientos', ruta: '/vencimientos' },
   { id: 'reportes',       label: '📊 Reportes',        ruta: '/reportes' },
   { id: 'exportacion', label: '📤 Exportar Contador', ruta: '/exportacion' },
   { id: 'configuracion',  label: '⚙️ Configuración',   ruta: '/configuracion' },
@@ -194,6 +196,9 @@ function Layout() {
             <RutaProtegida modulo="notas-credito"><NotaCredito /></RutaProtegida>
           } />
 
+          <Route path="/vencimientos" element={
+            <RutaProtegida modulo="vencimientos"><Vencimientos /></RutaProtegida>
+          } />
         </Routes>
       </div>
 
