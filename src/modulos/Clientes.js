@@ -11,8 +11,24 @@ export default function Clientes() {
     dni_ruc: '', nombre: '', telefono: '',
     direccion: '', ciudad: '', correo: '', tipo_precio: 'menor'
   })
+  const [modalHistorial, setModalHistorial] = useState(null)
+  const [historial, setHistorial] = useState([])
+  const [cargandoHistorial, setCargandoHistorial] = useState(false)
 
   useEffect(() => { cargarClientes() }, [])
+
+  async function verHistorial(cliente) {
+    setModalHistorial(cliente)
+    setCargandoHistorial(true)
+    const { data } = await supabase
+      .from('ventas')
+      .select('*, detalle_ventas(cantidad, precio_unitario, productos(nombre, codigo))')
+      .eq('cliente_id', cliente.id)
+      .order('fecha', { ascending: false })
+      .limit(50)
+    setHistorial(data || [])
+    setCargandoHistorial(false)
+  }
 
   async function cargarClientes() {
     setCargando(true)
@@ -140,13 +156,20 @@ export default function Clientes() {
                     </td>
                     <td style={td}>
                       <div style={{ display: 'flex', gap: '8px' }}>
+
                         <button onClick={() => abrirEditar(c)}
                           style={{ background: '#f0f7ff', border: '1px solid #3498db', color: '#3498db', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
                           ✏️ Editar
                         </button>
+
                         <button onClick={() => handleEliminar(c.id)}
                           style={{ background: '#fee', border: '1px solid #fcc', color: '#e74c3c', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
                           🗑 Eliminar
+                        </button>
+
+                        <button onClick={() => verHistorial(c)}
+                          style={{ background: '#f5f0ff', border: '1px solid #9b59b6', color: '#9b59b6', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                          📋 Historial
                         </button>
                       </div>
                     </td>
@@ -155,6 +178,105 @@ export default function Clientes() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {modalHistorial && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: 'white', borderRadius: '12px', width: '700px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+
+            {/* HEADER */}
+            <div style={{ padding: '24px 24px 16px 24px', borderBottom: '1px solid #eee' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>📋 Historial de compras</h3>
+                  <p style={{ margin: '4px 0 0 0', color: '#888', fontSize: '13px' }}>
+                    {modalHistorial.nombre} {modalHistorial.dni_ruc ? `· ${modalHistorial.dni_ruc}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => setModalHistorial(null)}
+                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#888' }}>×</button>
+              </div>
+
+              {/* RESUMEN */}
+              {!cargandoHistorial && historial.length > 0 && (
+                <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                  <div style={{ background: '#f0fff4', padding: '10px 16px', borderRadius: '6px', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Total comprado</p>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 'bold', color: '#2ecc71' }}>
+                      S/ {historial.reduce((s, v) => s + (v.total || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div style={{ background: '#f0f7ff', padding: '10px 16px', borderRadius: '6px', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Nº de compras</p>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 'bold', color: '#3498db' }}>{historial.length}</p>
+                  </div>
+                  <div style={{ background: '#f9f9f9', padding: '10px 16px', borderRadius: '6px', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Última compra</p>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 'bold', color: '#555' }}>
+                      {new Date(historial[0].fecha + 'T12:00:00').toLocaleDateString('es-PE')}
+                    </p>
+                  </div>
+                  <div style={{ background: '#f9f9f9', padding: '10px 16px', borderRadius: '6px', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Ticket promedio</p>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 'bold', color: '#555' }}>
+                      S/ {(historial.reduce((s, v) => s + (v.total || 0), 0) / historial.length).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* LISTA */}
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {cargandoHistorial ? (
+                <p style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Cargando...</p>
+              ) : historial.length === 0 ? (
+                <p style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Este cliente no tiene compras registradas</p>
+              ) : (
+                historial.map((v, i) => (
+                  <div key={v.id} style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px', color: '#888' }}>
+                          {new Date(v.fecha + 'T12:00:00').toLocaleDateString('es-PE')}
+                        </span>
+                        <span style={{ background: '#f0f0f0', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', color: '#555' }}>
+                          {v.tipo_comprobante}
+                        </span>
+                        <span style={{ background: '#f0f0f0', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', color: '#555' }}>
+                          {v.forma_pago}
+                        </span>
+                      </div>
+                      <span style={{ fontWeight: 'bold', color: '#2ecc71', fontSize: '15px' }}>
+                        S/ {parseFloat(v.total).toFixed(2)}
+                      </span>
+                    </div>
+                    {(v.detalle_ventas || []).length > 0 && (
+                      <div style={{ fontSize: '12px', color: '#888' }}>
+                        {v.detalle_ventas.slice(0, 3).map((d, j) => (
+                          <span key={j}>
+                            {d.productos?.nombre} x{d.cantidad}
+                            {j < Math.min(v.detalle_ventas.length, 3) - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                        {v.detalle_ventas.length > 3 && (
+                          <span style={{ color: '#3498db' }}> +{v.detalle_ventas.length - 3} más</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #eee' }}>
+              <button onClick={() => setModalHistorial(null)}
+                style={{ width: '100%', padding: '10px', background: '#0f3460', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
