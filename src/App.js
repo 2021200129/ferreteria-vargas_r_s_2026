@@ -24,6 +24,7 @@ import Configuracion from './modulos/Configuracion'
 import Usuarios from './modulos/Usuarios'
 import Login from './modulos/Login'
 import Exportacion from './modulos/Exportacion'
+import Caja from './modulos/Caja'
 
 const MODULOS = [
   { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
@@ -36,6 +37,7 @@ const MODULOS = [
   { id: 'proveedores',    label: '🏭 Proveedores',     ruta: '/proveedores' },
   { id: 'cuentas-pagar',  label: '🧾 Por Pagar',       ruta: '/cuentas-por-pagar' },
   { id: 'gastos',         label: '💸 Gastos',          ruta: '/gastos' },
+  { id: 'caja', label: '🏧 Caja', ruta: '/caja' },
   { id: 'transferencias', label: '🔄 Transferencias',  ruta: '/transferencias' },
   { id: 'kardex',         label: '📋 Kardex',          ruta: '/kardex' },
   { id: 'reportes',       label: '📊 Reportes',        ruta: '/reportes' },
@@ -143,6 +145,7 @@ function Layout() {
           <Route path="/configuracion"          element={<Configuracion />} />
           <Route path="/usuarios"               element={<Usuarios />} />
           <Route path="/exportacion" element={<Exportacion />} />
+          <Route path="/caja" element={<Caja />} />
         </Routes>
       </div>
 
