@@ -29,11 +29,13 @@ import { usePermiso } from './context/AuthContext'
 import RutaProtegida from './componentes/RutaProtegida'
 
 import Auditoria from './modulos/Auditoria'
+import NotaCredito from './modulos/NotaCredito'
 
 const MODULOS = [
   { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
   { id: 'productos',      label: '📦 Productos',       ruta: '/productos' },
   { id: 'ventas',         label: '🛒 Ventas',          ruta: '/ventas' },
+  { id: 'notas-credito', label: '↩️ Devoluciones', ruta: '/notas-credito' },
   { id: 'compras',        label: '📥 Compras',         ruta: '/compras' },
   { id: 'cotizaciones',   label: '📋 Cotizaciones',    ruta: '/cotizaciones' },
   { id: 'clientes',       label: '👥 Clientes',        ruta: '/clientes' },
@@ -187,6 +189,11 @@ function Layout() {
           <Route path="/auditoria" element={
             <RutaProtegida modulo="auditoria"><Auditoria /></RutaProtegida>
           } />
+
+          <Route path="/notas-credito" element={
+            <RutaProtegida modulo="notas-credito"><NotaCredito /></RutaProtegida>
+          } />
+
         </Routes>
       </div>
 

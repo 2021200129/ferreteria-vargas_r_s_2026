@@ -37,7 +37,7 @@ export function usePermiso() {
 
   const permisos = {
     admin:      ['*'],
-    vendedor:   ['dashboard', 'ventas', 'compras', 'cotizaciones', 'clientes', 'productos', 'caja'],
+    vendedor: ['dashboard', 'ventas', 'notas-credito', 'compras', 'cotizaciones', 'clientes', 'productos', 'caja'],
     almacenero: ['dashboard', 'productos', 'transferencias', 'kardex'],
     contador:   ['dashboard', 'reportes', 'exportacion', 'cuentas-cobrar', 'cuentas-pagar'],
   }

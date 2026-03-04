@@ -85,7 +85,10 @@ export default function Ventas() {
               </tr>
             ) : (
               ventas.map((v, i) => (
-                <tr key={v.id} style={{ background: i % 2 === 0 ? 'white' : '#f9f9f9' }}>
+                <tr key={v.id}
+                  onClick={() => { navigator.clipboard.writeText(v.id); alert('ID copiado: ' + v.id.slice(0,8) + '...') }}
+                  style={{ background: i % 2 === 0 ? 'white' : '#f9f9f9', cursor: 'pointer' }}
+                  title="Click para copiar ID de venta">
                   <td style={td}>{formatFecha(v.fecha)}</td>
                   <td style={td}>{v.clientes?.nombre || 'Cliente varios'}</td>
                   <td style={td}>{v.almacenes?.nombre || '—'}</td>
