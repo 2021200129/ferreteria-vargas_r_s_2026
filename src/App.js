@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { useState } from 'react'
 
 import Dashboard from './modulos/Dashboard'
 import Productos from './modulos/Productos'
@@ -33,46 +34,76 @@ import NotaCredito from './modulos/NotaCredito'
 import Vencimientos from './modulos/Vencimientos'
 
 const MODULOS = [
-  { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
-  { id: 'productos',      label: '📦 Productos',       ruta: '/productos' },
-  { id: 'ventas',         label: '🛒 Ventas',          ruta: '/ventas' },
-  { id: 'notas-credito', label: '↩️ Devoluciones', ruta: '/notas-credito' },
-  { id: 'compras',        label: '📥 Compras',         ruta: '/compras' },
-  { id: 'cotizaciones',   label: '📋 Cotizaciones',    ruta: '/cotizaciones' },
-  { id: 'clientes',       label: '👥 Clientes',        ruta: '/clientes' },
-  { id: 'cuentas-cobrar', label: '💰 Por Cobrar',      ruta: '/cuentas-por-cobrar' },
-  { id: 'proveedores',    label: '🏭 Proveedores',     ruta: '/proveedores' },
-  { id: 'cuentas-pagar',  label: '🧾 Por Pagar',       ruta: '/cuentas-por-pagar' },
-  { id: 'gastos',         label: '💸 Gastos',          ruta: '/gastos' },
-  { id: 'caja', label: '🏧 Caja', ruta: '/caja' },
-  { id: 'transferencias', label: '🔄 Transferencias',  ruta: '/transferencias' },
-  { id: 'kardex',         label: '📋 Kardex',          ruta: '/kardex' },
-  { id: 'vencimientos', label: '📅 Vencimientos', ruta: '/vencimientos' },
-  { id: 'reportes',       label: '📊 Reportes',        ruta: '/reportes' },
-  { id: 'exportacion', label: '📤 Exportar Contador', ruta: '/exportacion' },
-  { id: 'configuracion',  label: '⚙️ Configuración',   ruta: '/configuracion' },
-  { id: 'usuarios',       label: '👤 Usuarios',        ruta: '/usuarios' },
-  { id: 'auditoria', label: '🔍 Auditoría', ruta: '/auditoria' },
+  {
+    seccion: 'OPERACIONES',
+    items: [
+      { id: 'dashboard',     label: '🏠 Inicio',           ruta: '/' },
+      { id: 'ventas',        label: '🛒 Ventas',            ruta: '/ventas' },
+      { id: 'notas-credito', label: '↩️ Devoluciones',     ruta: '/notas-credito' },
+      { id: 'cotizaciones',  label: '📋 Cotizaciones',      ruta: '/cotizaciones' },
+      { id: 'compras',       label: '📥 Compras',           ruta: '/compras' },
+      { id: 'caja',          label: '🏧 Caja',              ruta: '/caja' },
+      { id: 'gastos',        label: '💸 Gastos',            ruta: '/gastos' },
+    ]
+  },
+  {
+    seccion: 'CLIENTES Y PROVEEDORES',
+    items: [
+      { id: 'clientes',       label: '👥 Clientes',         ruta: '/clientes' },
+      { id: 'cuentas-cobrar', label: '💰 Por Cobrar',       ruta: '/cuentas-por-cobrar' },
+      { id: 'proveedores',    label: '🏭 Proveedores',      ruta: '/proveedores' },
+      { id: 'cuentas-pagar',  label: '🧾 Por Pagar',        ruta: '/cuentas-por-pagar' },
+    ]
+  },
+  {
+    seccion: 'INVENTARIO',
+    items: [
+      { id: 'productos',      label: '📦 Productos',        ruta: '/productos' },
+      { id: 'transferencias', label: '🔄 Transferencias',   ruta: '/transferencias' },
+      { id: 'kardex',         label: '📋 Kardex',           ruta: '/kardex' },
+      { id: 'vencimientos',   label: '📅 Vencimientos',     ruta: '/vencimientos' },
+    ]
+  },
+  {
+    seccion: 'REPORTES',
+    items: [
+      { id: 'reportes',    label: '📊 Reportes',            ruta: '/reportes' },
+      { id: 'exportacion', label: '📤 Exportar Contador',   ruta: '/exportacion' },
+      { id: 'auditoria',   label: '🔍 Auditoría',           ruta: '/auditoria' },
+    ]
+  },
+  {
+    seccion: 'ADMINISTRACIÓN',
+    items: [
+      { id: 'configuracion', label: '⚙️ Configuración',    ruta: '/configuracion' },
+      { id: 'usuarios',      label: '👤 Usuarios',          ruta: '/usuarios' },
+    ]
+  },
 ]
 
 function Layout() {
   const { usuario, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { puede, modulosPermitidos } = usePermiso()
+  const { modulosPermitidos } = usePermiso()
 
-  const modulosVisibles = MODULOS.filter(m => {
-    const permitidos = modulosPermitidos()
-    if (permitidos === null) return true
-    return permitidos.includes(m.id)
-  })
+  // Todas las secciones abiertas por defecto
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState(
+    () => Object.fromEntries(MODULOS.map(g => [g.seccion, true]))
+  )
 
-  if (!usuario) return <Login />
+  function toggleSeccion(seccion) {
+    setSeccionesAbiertas(prev => ({ ...prev, [seccion]: !prev[seccion] }))
+  }
 
   function estaActivo(ruta) {
     if (ruta === '/') return location.pathname === '/'
     return location.pathname.startsWith(ruta)
   }
+
+  if (!usuario) return <Login />
+
+  const permitidos = modulosPermitidos()
 
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
@@ -94,26 +125,81 @@ function Layout() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {modulosVisibles.map(m => (
-            <button
-              key={m.id}
-              onClick={() => navigate(m.ruta)}
-              style={{
-                width: '100%',
-                background: estaActivo(m.ruta) ? '#16213e' : 'transparent',
-                color: 'white',
-                border: 'none',
-                padding: '14px 20px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '14px',
-                borderLeft: estaActivo(m.ruta) ? '3px solid #4a90d9' : '3px solid transparent',
-                boxSizing: 'border-box',
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
+          {MODULOS.map((grupo) => {
+            // Filtrar items según permisos
+            const itemsVisibles = grupo.items.filter(m =>
+              permitidos === null || permitidos.includes(m.id)
+            )
+            if (itemsVisibles.length === 0) return null
+
+            const abierto = seccionesAbiertas[grupo.seccion]
+
+            return (
+              <div key={grupo.seccion}>
+                {/* Cabecera de sección clickeable */}
+                <button
+                  onClick={() => toggleSeccion(grupo.seccion)}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px 4px 20px',
+                    color: 'rgba(255,255,255,0.45)',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{
+                    fontSize: '10px',
+                    letterSpacing: '1.5px',
+                    fontWeight: 'bold',
+                  }}>
+                    {grupo.seccion}
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    transition: 'transform 0.2s',
+                    transform: abierto ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    display: 'inline-block',
+                  }}>
+                    ▾
+                  </span>
+                </button>
+
+                {/* Items colapsables */}
+                <div style={{
+                  overflow: 'hidden',
+                  maxHeight: abierto ? `${itemsVisibles.length * 44}px` : '0px',
+                  transition: 'max-height 0.25s ease',
+                }}>
+                  {itemsVisibles.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => navigate(m.ruta)}
+                      style={{
+                        width: '100%',
+                        background: estaActivo(m.ruta) ? '#16213e' : 'transparent',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        borderLeft: estaActivo(m.ruta) ? '3px solid #4a90d9' : '3px solid transparent',
+                        boxSizing: 'border-box',
+                        display: 'block',
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         <div style={{ padding: '16px', borderTop: '1px solid #333' }}>
@@ -151,17 +237,15 @@ function Layout() {
           <Route path="/cotizaciones/nueva"     element={<NuevaCotizacion />} />
           <Route path="/cotizaciones/:id"       element={<VerCotizacion />} />
           <Route path="/clientes"               element={<Clientes />} />
-          <Route path="/cuentas-por-cobrar"     element={<CuentasPorCobrar />} />
           <Route path="/proveedores"            element={<Proveedores />} />
-          <Route path="/cuentas-por-pagar"      element={<CuentasPorPagar />} />
           <Route path="/gastos"                 element={<Gastos />} />
-          <Route path="/transferencias"         element={<Transferencias />} />
+          {/* <Route path="/transferencias"         element={<Transferencias />} />
           <Route path="/kardex"                 element={<Kardex />} />
-          <Route path="/reportes"               element={<Reportes />} />
-          <Route path="/configuracion"          element={<Configuracion />} />
+          <Route path="/reportes"               element={<Reportes />} /> */}
+          {/* <Route path="/configuracion"          element={<Configuracion />} />
           <Route path="/usuarios"               element={<Usuarios />} />
-          <Route path="/exportacion" element={<Exportacion />} />
-          <Route path="/caja" element={<Caja />} />
+          <Route path="/exportacion"            element={<Exportacion />} /> */}
+          <Route path="/caja"                   element={<Caja />} />
 
           <Route path="/reportes" element={
             <RutaProtegida modulo="reportes"><Reportes /></RutaProtegida>
@@ -187,15 +271,12 @@ function Layout() {
           <Route path="/transferencias" element={
             <RutaProtegida modulo="transferencias"><Transferencias /></RutaProtegida>
           } />
-
           <Route path="/auditoria" element={
             <RutaProtegida modulo="auditoria"><Auditoria /></RutaProtegida>
           } />
-
           <Route path="/notas-credito" element={
             <RutaProtegida modulo="notas-credito"><NotaCredito /></RutaProtegida>
           } />
-
           <Route path="/vencimientos" element={
             <RutaProtegida modulo="vencimientos"><Vencimientos /></RutaProtegida>
           } />

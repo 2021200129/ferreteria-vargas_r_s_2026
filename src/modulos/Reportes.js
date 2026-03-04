@@ -434,6 +434,90 @@ export default function Reportes() {
           </table>
         )}
       </div>
+
+      {/* ESTADO DE RESULTADOS */}
+      <div style={{ background: 'white', padding: '24px', borderRadius: '8px', marginTop: '24px' }}>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          📊 Estado de Resultados — {nombreMes}
+        </h3>
+        <p style={{ margin: '0 0 20px 0', fontSize: '12px', color: '#888' }}>
+          Resumen contable del período
+        </p>
+
+        {/* INGRESOS */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid #0f3460' }}>
+            <span style={{ fontWeight: 'bold', color: '#0f3460', fontSize: '13px', textTransform: 'uppercase' }}>Ingresos</span>
+            <span style={{ fontWeight: 'bold', color: '#0f3460' }}>S/ {datos.totalVentas.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', fontSize: '13px', color: '#555' }}>
+            <span>Ventas del período ({datos.cantVentas} transacciones)</span>
+            <span>S/ {datos.totalVentas.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* COSTO DE VENTAS */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid #e74c3c' }}>
+            <span style={{ fontWeight: 'bold', color: '#e74c3c', fontSize: '13px', textTransform: 'uppercase' }}>Costo de ventas</span>
+            <span style={{ fontWeight: 'bold', color: '#e74c3c' }}>S/ {datos.totalCosto.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', fontSize: '13px', color: '#555' }}>
+            <span>Costo de productos vendidos (CPP)</span>
+            <span>S/ {datos.totalCosto.toFixed(2)}</span>
+          </div>
+          {datos.totalCosto === 0 && (
+            <div style={{ padding: '6px 16px', fontSize: '11px', color: '#f39c12' }}>
+              ⚠️ El costo es 0 porque los productos no tienen precio de compra registrado aún
+            </div>
+          )}
+        </div>
+
+        {/* UTILIDAD BRUTA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: '#f0f7ff', borderRadius: '6px', marginBottom: '20px' }}>
+          <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Utilidad Bruta</span>
+          <span style={{ fontWeight: 'bold', fontSize: '16px', color: datos.ganancia >= 0 ? '#2ecc71' : '#e74c3c' }}>
+            S/ {datos.ganancia.toFixed(2)}
+          </span>
+        </div>
+
+        {/* GASTOS OPERATIVOS */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid #f39c12' }}>
+            <span style={{ fontWeight: 'bold', color: '#f39c12', fontSize: '13px', textTransform: 'uppercase' }}>Gastos operativos</span>
+            <span style={{ fontWeight: 'bold', color: '#f39c12' }}>S/ {datos.totalGastos.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', fontSize: '13px', color: '#555' }}>
+            <span>Gastos del período</span>
+            <span>S/ {datos.totalGastos.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* UTILIDAD NETA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 20px', background: datos.neto >= 0 ? '#f0fff4' : '#fff5f5', borderRadius: '8px', border: `2px solid ${datos.neto >= 0 ? '#2ecc71' : '#e74c3c'}` }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>Utilidad Neta del Período</p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#888' }}>Ingresos − Costo de ventas − Gastos</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: datos.neto >= 0 ? '#2ecc71' : '#e74c3c' }}>
+              S/ {datos.neto.toFixed(2)}
+            </p>
+            {datos.totalVentas > 0 && (
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#888' }}>
+                Margen neto: {((datos.neto / datos.totalVentas) * 100).toFixed(1)}%
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* NOTA CONTABLE */}
+        <div style={{ marginTop: '16px', padding: '12px 16px', background: '#f9f9f9', borderRadius: '6px', fontSize: '12px', color: '#888' }}>
+          <strong>Nota:</strong> Este estado de resultados es referencial. Para efectos tributarios SUNAT, 
+          usa el Excel exportado para el contador. El costo de ventas usa el método CPP (Costo Promedio Ponderado) 
+          conforme a la NIC 2 aplicable en Perú.
+        </div>
+      </div>
     </div>
   )
 }
