@@ -19,11 +19,19 @@ export default function NuevaVenta() {
     forma_pago: 'efectivo',
     descuento: 0,
     motivo_descuento: '',
-    usuario_id: '',
+    usuario_id: '',  // se llena abajo
   })
   const [modalProducto, setModalProducto] = useState(null)
   const [usuarios, setUsuarios] = useState([])
   const { usuario } = useAuth()
+
+  //const { puede } = usePermiso()
+
+  useEffect(() => {
+    if (usuario?.id) {
+      setForm(prev => ({ ...prev, usuario_id: usuario.id }))
+    }
+  }, [usuario])
 
   useEffect(() => {
     async function cargarDatos() {
@@ -119,7 +127,6 @@ export default function NuevaVenta() {
         descuento: descuento,
         motivo_descuento: form.motivo_descuento || null,
         usuario_id: form.usuario_id || null,
-        total: total,  // ya usa el total con descuento
       }])
       .select()
       .single()
