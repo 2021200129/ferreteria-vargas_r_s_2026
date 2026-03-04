@@ -18,6 +18,21 @@ export default function NuevaCompra() {
     tipo_documento: 'factura',
   })
   const { usuario } = useAuth()
+  const [moneda, setMoneda] = useState('PEN')
+  const [tipoCambio, setTipoCambio] = useState('')
+  const [cargandoTC, setCargandoTC] = useState(false)
+
+  async function obtenerTipoCambio() {
+    setCargandoTC(true)
+    try {
+      const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
+      const data = await res.json()
+      setTipoCambio(data.rates.PEN.toFixed(3))
+    } catch {
+      setTipoCambio('3.750')
+    }
+    setCargandoTC(false)
+  }
 
   useEffect(() => {
     async function cargarDatos() {
@@ -79,24 +94,28 @@ export default function NuevaCompra() {
     setItems(items.filter((_, i) => i !== index))
   }
 
-  const total = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  //const total = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+
+  const totalUSD = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  const tc = parseFloat(tipoCambio) || 1
+  const total = moneda === 'USD' ? totalUSD * tc : totalUSD
 
   async function handleGuardar() {
     if (!form.almacen_id) { alert('Selecciona un almacén'); return }
     if (items.length === 0) { alert('Agrega al menos un producto'); return }
+    if (moneda === 'USD' && !tipoCambio) { alert('Ingresa el tipo de cambio'); return }
     setGuardando(true)
 
-    const { data: compra, error } = await supabase
-      .from('compras')
-      .insert([{
-        almacen_id: form.almacen_id,
-        proveedor_id: form.proveedor_id || null,
-        tipo_documento: form.tipo_documento,
-        total: total,
-        estado: 'completada'
-      }])
-      .select()
-      .single()
+    const { data: compra, error } = await supabase.from('compras').insert([{
+      almacen_id: form.almacen_id,
+      proveedor_id: form.proveedor_id || null,
+      tipo_documento: form.tipo_documento,
+      total: total,
+      total_usd: moneda === 'USD' ? totalUSD : null,
+      moneda: moneda,
+      tipo_cambio: moneda === 'USD' ? parseFloat(tipoCambio) : 1,
+      estado: 'completada'
+    }]).select().single()
 
     if (error) { alert('Error: ' + error.message); setGuardando(false); return }
 
@@ -193,6 +212,34 @@ export default function NuevaCompra() {
               <option value="sin_documento">Sin documento</option>
             </select>
           </Campo>
+
+          <Campo label="Moneda">
+            <select value={moneda} onChange={e => { setMoneda(e.target.value); if (e.target.value === 'USD' && !tipoCambio) obtenerTipoCambio() }}
+              style={input}>
+              <option value="PEN">Soles (S/)</option>
+              <option value="USD">Dólares (US$)</option>
+            </select>
+          </Campo>
+
+          {moneda === 'USD' && (
+            <Campo label="Tipo de cambio (S/ por US$)">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="number" value={tipoCambio}
+                  onChange={e => setTipoCambio(e.target.value)}
+                  style={{ ...input, flex: 1 }}
+                  placeholder="Ej: 3.750" />
+                <button onClick={obtenerTipoCambio} disabled={cargandoTC}
+                  style={{ padding: '9px 14px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px' }}>
+                  {cargandoTC ? '...' : '🔄 Actualizar'}
+                </button>
+              </div>
+              {tipoCambio && (
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#888' }}>
+                  US$ 1 = S/ {tipoCambio}
+                </p>
+              )}
+            </Campo>
+          )}
         </div>
 
         <Campo label="Buscar producto">
@@ -293,13 +340,23 @@ export default function NuevaCompra() {
               ))}
             </tbody>
           </table>
-          <div style={{ padding: '16px 24px', background: '#f9f9f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#888' }}>{items.length} producto(s)</span>
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <span style={{ fontSize: '16px', color: '#555' }}>Total:</span>
-              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f3460' }}>S/ {total.toFixed(2)}</span>
+
+          <div style={{ padding: '16px 24px', background: '#f9f9f9', display: 'flex', justifyContent: 'flex-end', gap: '16px', alignItems: 'center' }}>
+            {moneda === 'USD' && (
+              <div style={{ textAlign: 'right', marginRight: '16px' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Total en dólares</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>US$ {totalUSD.toFixed(2)}</p>
+              </div>
+            )}
+            <div style={{ textAlign: 'right' }}>
+              {moneda === 'USD' && <p style={{ margin: '0 0 2px 0', fontSize: '11px', color: '#888' }}>TC: {tipoCambio}</p>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ fontSize: '16px', color: '#555' }}>Total S/:</span>
+                <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f3460' }}>S/ {total.toFixed(2)}</span>
+              </div>
             </div>
           </div>
+
         </div>
       )}
 

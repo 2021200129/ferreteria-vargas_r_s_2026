@@ -54,7 +54,14 @@ export default function Compras() {
                   <td style={td}>{c.proveedores?.nombre || '—'}</td>
                   <td style={td}>{c.almacenes?.nombre || '—'}</td>
                   <td style={td}>{c.tipo_documento}</td>
-                  <td style={{ ...td, fontWeight: 'bold' }}>S/ {c.total?.toFixed(2)}</td>
+                  <td style={{ ...td, fontWeight: 'bold' }}>
+                    S/ {parseFloat(c.total || 0).toFixed(2)}
+                    {c.moneda === 'USD' && (
+                      <div style={{ fontSize: '11px', color: '#3498db' }}>
+                        US$ {parseFloat(c.total_usd || 0).toFixed(2)} · TC: {c.tipo_cambio}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
