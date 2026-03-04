@@ -22,6 +22,10 @@ export default function NuevaCompra() {
   const [tipoCambio, setTipoCambio] = useState('')
   const [cargandoTC, setCargandoTC] = useState(false)
 
+  const [costoFlete, setCostoFlete] = useState(0)
+  const [costoAdicional, setCostoAdicional] = useState(0)
+  const [detalleAdicional, setDetalleAdicional] = useState('')
+
   async function obtenerTipoCambio() {
     setCargandoTC(true)
     try {
@@ -96,9 +100,12 @@ export default function NuevaCompra() {
 
   //const total = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
 
-  const totalUSD = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  const subtotalProductos = items.reduce((sum, i) => sum + (parseFloat(i.cantidad) * parseFloat(i.precio_unitario) || 0), 0)
+  const totalAdicional = (parseFloat(costoFlete) || 0) + (parseFloat(costoAdicional) || 0)
+  const totalUSD = subtotalProductos
   const tc = parseFloat(tipoCambio) || 1
-  const total = moneda === 'USD' ? totalUSD * tc : totalUSD
+  const subtotalSoles = moneda === 'USD' ? subtotalProductos * tc : subtotalProductos
+  const total = subtotalSoles + totalAdicional
 
   async function handleGuardar() {
     if (!form.almacen_id) { alert('Selecciona un almacén'); return }
@@ -114,6 +121,9 @@ export default function NuevaCompra() {
       total_usd: moneda === 'USD' ? totalUSD : null,
       moneda: moneda,
       tipo_cambio: moneda === 'USD' ? parseFloat(tipoCambio) : 1,
+      costo_flete: parseFloat(costoFlete) || 0,
+      costo_adicional: parseFloat(costoAdicional) || 0,
+      detalle_adicional: detalleAdicional || null,
       estado: 'completada'
     }]).select().single()
 
@@ -128,8 +138,20 @@ export default function NuevaCompra() {
     }))
     await supabase.from('detalle_compras').insert(detalle)
 
+    // Distribuir costos adicionales proporcionalmente entre productos
+    const totalAdicionalFinal = (parseFloat(costoFlete) || 0) + (parseFloat(costoAdicional) || 0)
+    const costoAdicionalPorItem = items.map(item => {
+      if (totalAdicionalFinal === 0 || subtotalSoles === 0) return 0
+      const participacion = (parseFloat(item.cantidad) * parseFloat(item.precio_unitario) * (moneda === 'USD' ? tc : 1)) / subtotalSoles
+      return (totalAdicionalFinal * participacion) / parseFloat(item.cantidad)
+    })
+
     // Actualizar stock — compra SUMA al stock
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx]
+      const precioEnSoles = parseFloat(item.precio_unitario) * (moneda === 'USD' ? tc : 1)
+      const costoUnitarioConFlete = precioEnSoles + costoAdicionalPorItem[idx]
+
       const { data: stockActual } = await supabase
         .from('stock')
         .select('cantidad')
@@ -151,7 +173,6 @@ export default function NuevaCompra() {
         }])
       }
 
-      // Registrar en kardex
       await supabase.rpc('registrar_kardex', {
         p_producto_id: item.producto_id,
         p_almacen_id: form.almacen_id,
@@ -160,25 +181,23 @@ export default function NuevaCompra() {
         p_referencia_id: compra.id,
         p_referencia_tipo: 'compra',
         p_cantidad: parseFloat(item.cantidad),
-        p_costo_unitario: parseFloat(item.precio_unitario),
-        p_nota: `Compra ${compra.tipo_documento}`
+        p_costo_unitario: costoUnitarioConFlete,
+        p_nota: `Compra ${compra.tipo_documento}${detalleAdicional ? ' — ' + detalleAdicional : ''}`
       })
 
-      // Registrar historial de precio
       if (form.proveedor_id) {
         await supabase.from('historial_precios_compra').insert([{
           producto_id: item.producto_id,
           proveedor_id: form.proveedor_id,
           compra_id: compra.id,
-          precio_unitario: parseFloat(item.precio_unitario),
+          precio_unitario: costoUnitarioConFlete,
         }])
 
-        // Actualizar precio_compra en productos si cambió
         const { data: prodActual } = await supabase
           .from('productos').select('precio_compra').eq('id', item.producto_id).single()
-        if (prodActual && parseFloat(item.precio_unitario) !== parseFloat(prodActual.precio_compra)) {
+        if (prodActual && costoUnitarioConFlete !== parseFloat(prodActual.precio_compra)) {
           await supabase.from('productos')
-            .update({ precio_compra: parseFloat(item.precio_unitario) })
+            .update({ precio_compra: costoUnitarioConFlete })
             .eq('id', item.producto_id)
         }
       }
@@ -301,6 +320,31 @@ export default function NuevaCompra() {
       </div>
 
       {items.length > 0 && (
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Costos adicionales
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '16px' }}>
+            <Campo label="Flete / Transporte (S/)">
+              <input type="number" value={costoFlete}
+                onChange={e => setCostoFlete(e.target.value)}
+                style={input} placeholder="0.00" min="0" />
+            </Campo>
+            <Campo label="Otro costo adicional (S/)">
+              <input type="number" value={costoAdicional}
+                onChange={e => setCostoAdicional(e.target.value)}
+                style={input} placeholder="0.00" min="0" />
+            </Campo>
+            <Campo label="Detalle">
+              <input value={detalleAdicional}
+                onChange={e => setDetalleAdicional(e.target.value)}
+                style={input} placeholder="Ej: Descarga, embalaje, seguro" />
+            </Campo>
+          </div>
+        </div>
+      )}
+
+      {items.length > 0 && (
         <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -362,17 +406,34 @@ export default function NuevaCompra() {
             </tbody>
           </table>
 
-          <div style={{ padding: '16px 24px', background: '#f9f9f9', display: 'flex', justifyContent: 'flex-end', gap: '16px', alignItems: 'center' }}>
-            {moneda === 'USD' && (
-              <div style={{ textAlign: 'right', marginRight: '16px' }}>
-                <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Total en dólares</p>
-                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>US$ {totalUSD.toFixed(2)}</p>
-              </div>
-            )}
-            <div style={{ textAlign: 'right' }}>
-              {moneda === 'USD' && <p style={{ margin: '0 0 2px 0', fontSize: '11px', color: '#888' }}>TC: {tipoCambio}</p>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ fontSize: '16px', color: '#555' }}>Total S/:</span>
+          <div style={{ padding: '16px 24px', background: '#f9f9f9' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+              {moneda === 'USD' && (
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#888' }}>
+                  <span>Subtotal USD:</span>
+                  <span>US$ {totalUSD.toFixed(2)} × {tipoCambio} = S/ {subtotalSoles.toFixed(2)}</span>
+                </div>
+              )}
+              {moneda === 'PEN' && (
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#888' }}>
+                  <span>Subtotal productos:</span>
+                  <span>S/ {subtotalSoles.toFixed(2)}</span>
+                </div>
+              )}
+              {parseFloat(costoFlete) > 0 && (
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#888' }}>
+                  <span>Flete / Transporte:</span>
+                  <span>+ S/ {parseFloat(costoFlete).toFixed(2)}</span>
+                </div>
+              )}
+              {parseFloat(costoAdicional) > 0 && (
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#888' }}>
+                  <span>{detalleAdicional || 'Costo adicional'}:</span>
+                  <span>+ S/ {parseFloat(costoAdicional).toFixed(2)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderTop: '1px solid #ddd', paddingTop: '8px', marginTop: '4px' }}>
+                <span style={{ fontSize: '16px', color: '#555' }}>Total:</span>
                 <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f3460' }}>S/ {total.toFixed(2)}</span>
               </div>
             </div>
