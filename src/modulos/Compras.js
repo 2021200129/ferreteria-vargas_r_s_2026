@@ -6,6 +6,8 @@ export default function Compras() {
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
   const navigate = useNavigate()
+  const [repitiendo, setRepitiendo] = useState(null)
+  
 
   useEffect(() => { cargarCompras() }, [])
 
@@ -19,6 +21,38 @@ export default function Compras() {
     if (error) console.error(error)
     else setCompras(data)
     setCargando(false)
+  }
+
+  async function repetirCompra(compra) {
+    setRepitiendo(compra.id)
+    const { data: detalle } = await supabase
+      .from('detalle_compras')
+      .select('*, productos(id, nombre, codigo, unidad_medida, precio_compra, tiene_vencimiento)')
+      .eq('compra_id', compra.id)
+
+    if (!detalle || detalle.length === 0) {
+      alert('Esta compra no tiene detalle registrado')
+      setRepitiendo(null)
+      return
+    }
+
+    // Guardar en sessionStorage para que NuevaCompra lo lea
+    sessionStorage.setItem('repetir_compra', JSON.stringify({
+      proveedor_id: compra.proveedor_id,
+      tipo_documento: compra.tipo_documento,
+      items: detalle.map(d => ({
+        producto_id: d.producto_id,
+        nombre: d.productos?.nombre,
+        codigo: d.productos?.codigo,
+        unidad_medida: d.productos?.unidad_medida,
+        cantidad: d.cantidad,
+        precio_unitario: d.precio_unitario,
+        tiene_vencimiento: d.productos?.tiene_vencimiento || false,
+      }))
+    }))
+
+    navigate('/compras/nueva')
+    setRepitiendo(null)
   }
 
   return (
@@ -42,6 +76,7 @@ export default function Compras() {
               <th style={th}>Almacén</th>
               <th style={th}>Documento</th>
               <th style={th}>Total</th>
+              <th style={th}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -61,6 +96,14 @@ export default function Compras() {
                         US$ {parseFloat(c.total_usd || 0).toFixed(2)} · TC: {c.tipo_cambio}
                       </div>
                     )}
+                  </td>
+                  <td style={td}>
+                    <button
+                      onClick={() => repetirCompra(c)}
+                      disabled={repitiendo === c.id}
+                      style={{ background: '#f0f7ff', border: '1px solid #3498db', color: '#3498db', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                      {repitiendo === c.id ? '...' : '🔄 Repetir'}
+                    </button>
                   </td>
                 </tr>
               ))

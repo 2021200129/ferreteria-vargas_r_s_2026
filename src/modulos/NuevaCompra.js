@@ -86,6 +86,28 @@ export default function NuevaCompra() {
   useEffect(() => {
     supabase.from('almacenes').select('*').then(({ data }) => setAlmacenes(data || []))
     supabase.from('proveedores').select('*').order('nombre').then(({ data }) => setProveedores(data || []))
+
+    // Cargar compra a repetir si viene de "Repetir compra"
+    const repetir = sessionStorage.getItem('repetir_compra')
+    if (repetir) {
+      try {
+        const data = JSON.parse(repetir)
+        if (data.proveedor_id) setForm(prev => ({ ...prev, proveedor_id: data.proveedor_id, tipo_documento: data.tipo_documento || 'factura' }))
+        if (data.items?.length > 0) {
+          setItems(data.items)
+          const lotesNuevos = {}
+          data.items.forEach(item => {
+            if (item.tiene_vencimiento) {
+              lotesNuevos[item.producto_id] = { numero_lote: '', fecha_vencimiento: '' }
+            }
+          })
+          setLotesItems(lotesNuevos)
+        }
+        sessionStorage.removeItem('repetir_compra')
+      } catch (e) {
+        console.error('Error al cargar compra repetida', e)
+      }
+    }
   }, [])
 
   useEffect(() => {
