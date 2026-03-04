@@ -19,12 +19,14 @@ export default function Reportes() {
       { data: compras },
       { data: gastos },
       { data: stockBajo },
+      { data: ventasVendedor },
     ] = await Promise.all([
       supabase.from('ventas').select('*, clientes(nombre)').gte('fecha', inicio).lte('fecha', fin).order('fecha'),
       supabase.from('detalle_ventas').select('*, productos(nombre, codigo), ventas(fecha, total, forma_pago)').gte('ventas.fecha', inicio).lte('ventas.fecha', fin),
       supabase.from('compras').select('*, proveedores(nombre)').gte('fecha', inicio).lte('fecha', fin),
       supabase.from('gastos').select('*').gte('fecha', inicio).lte('fecha', fin),
       supabase.from('stock').select('cantidad, productos(nombre, stock_minimo, codigo), almacenes(nombre)'),
+      supabase.from('ventas').select('total, usuario_id, usuarios(nombre)').gte('fecha', inicio).lte('fecha', fin),
     ])
 
     // Ventas por día
@@ -72,6 +74,15 @@ export default function Reportes() {
     })
     const topProveedores = Object.values(porProveedor).sort((a, b) => b.total - a.total).slice(0, 10)
 
+    const porVendedor = {}
+    ;(ventasVendedor || []).forEach(v => {
+      const nombre = v.usuarios?.nombre || 'Sin asignar'
+      if (!porVendedor[nombre]) porVendedor[nombre] = { nombre, total: 0, ventas: 0 }
+      porVendedor[nombre].total += v.total || 0
+      porVendedor[nombre].ventas += 1
+    })
+    const topVendedores = Object.values(porVendedor).sort((a, b) => b.total - a.total)
+
     // Stock bajo
     const stockAlerta = (stockBajo || []).filter(s => s.productos && s.cantidad <= (s.productos.stock_minimo || 0))
 
@@ -89,6 +100,7 @@ export default function Reportes() {
       stockAlerta,
       cantVentas: (ventas || []).length,
       cantCompras: (compras || []).length,
+      topVendedores,
     })
     setCargando(false)
   }
@@ -100,6 +112,7 @@ export default function Reportes() {
   const maxProducto = datos.topProductos[0]?.total || 1
   const maxCliente = datos.topClientes[0]?.total || 1
   const maxProveedor = datos.topProveedores[0]?.total || 1
+  const maxVendedor = datos.topVendedores[0]?.total || 1
 
   const nombreMes = new Date(mes + '-02').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
 
@@ -235,6 +248,38 @@ export default function Reportes() {
                     <div style={{ width: `${(p.total / maxProveedor) * 100}%`, background: '#e67e22', height: '100%', borderRadius: '4px' }} />
                   </div>
                   <span style={{ fontSize: '11px', color: '#888' }}>{p.compras} compras</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* VENTAS POR VENDEDOR */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          🧑‍💼 Ventas por vendedor
+        </h3>
+        {datos.topVendedores.length === 0 ? (
+          <p style={{ color: '#888', fontSize: '13px' }}>Sin datos — asigna vendedor al registrar ventas</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            {datos.topVendedores.map((v, i) => (
+              <div key={i}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '13px' }}>
+                    <strong style={{ color: '#0f3460' }}>#{i + 1}</strong> {v.nombre}
+                  </span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>S/ {v.total.toFixed(2)}</span>
+                    <span style={{ fontSize: '11px', color: '#888', marginLeft: '8px' }}>{v.ventas} ventas</span>
+                  </div>
+                </div>
+                <div style={{ background: '#f0f0f0', borderRadius: '4px', height: '8px' }}>
+                  <div style={{ width: `${(v.total / maxVendedor) * 100}%`, background: '#0f3460', height: '100%', borderRadius: '4px' }} />
+                </div>
+                <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                  Ticket promedio: S/ {(v.total / v.ventas).toFixed(2)}
                 </div>
               </div>
             ))}
