@@ -36,8 +36,9 @@ export default function Ventas() {
     return colores[forma] || '#95a5a6'
   }
 
+  const hoy = new Date().toISOString().split('T')[0]
   const totalHoy = ventas
-    .filter(v => new Date(v.fecha).toDateString() === new Date().toDateString())
+    .filter(v => (v.fecha || '').slice(0, 10) === hoy)
     .reduce((sum, v) => sum + (v.total || 0), 0)
 
   return (

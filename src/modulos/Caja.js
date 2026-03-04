@@ -62,7 +62,7 @@ export default function Caja() {
       monto_inicial: parseFloat(form.monto_inicial),
       estado: 'abierta'
     }])
-    setForm({ almacen_id: '', monto_inicial: '' })
+    setForm(prev => ({ ...prev, monto_inicial: '' }))
     cargarTodo()
     setGuardando(false)
   }

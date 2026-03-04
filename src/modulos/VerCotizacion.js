@@ -15,7 +15,9 @@ export default function VerCotizacion() {
   async function cargarTodo() {
     const [{ data: cot }, { data: det }, { data: cfg }] = await Promise.all([
       supabase.from('cotizaciones').select('*').eq('id', id).single(),
-      supabase.from('detalle_cotizaciones').select('*').eq('cotizacion_id', id),
+      supabase.from('detalle_cotizaciones')
+      .select('*, productos(id, nombre, codigo, precio_compra)')
+      .eq('cotizacion_id', id),
       supabase.from('configuracion').select('*')
     ])
     setCotizacion(cot)

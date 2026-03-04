@@ -29,7 +29,9 @@ export default function Reportes() {
       supabase.from('gastos').select('*').gte('fecha', inicio).lte('fecha', fin),
       supabase.from('stock').select('cantidad, productos(nombre, stock_minimo, codigo), almacenes(nombre)'),
       supabase.from('ventas').select('total, usuario_id, usuarios(nombre)').gte('fecha', inicio).lte('fecha', fin),
-      supabase.from('detalle_ventas').select('cantidad, precio_unitario, precio_compra, producto_id, productos(nombre, codigo)').gte('ventas.fecha', inicio).lte('ventas.fecha', fin),
+      supabase.from('detalle_ventas')
+      .select('cantidad, precio_unitario, precio_compra, producto_id, productos(nombre, codigo, precio_compra)')
+      .limit(500),
       supabase.from('productos').select('id, nombre, codigo, precio_venta_menor, precio_compra').limit(200),
     ])
 
@@ -95,7 +97,7 @@ export default function Reportes() {
       if (!margenPorProducto[nombre]) margenPorProducto[nombre] = { nombre, codigo, ingresos: 0, costo: 0, cantidad: 0 }
       const cant = parseFloat(d.cantidad || 0)
       const precioVenta = parseFloat(d.precio_unitario || 0)
-      const precioCompra = parseFloat(d.precio_compra || 0)
+      const precioCompra = parseFloat(d.precio_compra || 0) || parseFloat(d.productos?.precio_compra || 0)
       margenPorProducto[nombre].ingresos += cant * precioVenta
       margenPorProducto[nombre].costo += cant * precioCompra
       margenPorProducto[nombre].cantidad += cant
