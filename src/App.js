@@ -28,6 +28,8 @@ import Caja from './modulos/Caja'
 import { usePermiso } from './context/AuthContext'
 import RutaProtegida from './componentes/RutaProtegida'
 
+import Auditoria from './modulos/Auditoria'
+
 const MODULOS = [
   { id: 'dashboard',      label: '🏠 Inicio',         ruta: '/' },
   { id: 'productos',      label: '📦 Productos',       ruta: '/productos' },
@@ -46,6 +48,7 @@ const MODULOS = [
   { id: 'exportacion', label: '📤 Exportar Contador', ruta: '/exportacion' },
   { id: 'configuracion',  label: '⚙️ Configuración',   ruta: '/configuracion' },
   { id: 'usuarios',       label: '👤 Usuarios',        ruta: '/usuarios' },
+  { id: 'auditoria', label: '🔍 Auditoría', ruta: '/auditoria' },
 ]
 
 function Layout() {
@@ -179,6 +182,10 @@ function Layout() {
           } />
           <Route path="/transferencias" element={
             <RutaProtegida modulo="transferencias"><Transferencias /></RutaProtegida>
+          } />
+
+          <Route path="/auditoria" element={
+            <RutaProtegida modulo="auditoria"><Auditoria /></RutaProtegida>
           } />
         </Routes>
       </div>

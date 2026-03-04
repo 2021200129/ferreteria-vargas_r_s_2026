@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { usePermiso } from '../context/AuthContext'
-
+import { registrarAuditoria } from '../utils/auditoria'
+import { useAuth } from '../context/AuthContext'
 
 
 export default function Productos() {
@@ -18,6 +19,8 @@ export default function Productos() {
   const [guardandoAjuste, setGuardandoAjuste] = useState(false)
 
   const { puede } = usePermiso()
+
+  const { usuario } = useAuth()
 
   useEffect(() => {
     cargarProductos()
@@ -90,6 +93,15 @@ export default function Productos() {
     setAlmacenAjuste('')
     cargarProductos()
     setGuardandoAjuste(false)
+
+    await registrarAuditoria({
+      usuario,
+      accion: 'AJUSTE_STOCK',
+      modulo: 'productos',
+      detalle: `${modalAjuste.nombre} — diferencia: ${diferencia > 0 ? '+' : ''}${diferencia} — motivo: ${ajuste.motivo || 'Sin motivo'}`,
+      referenciaId: modalAjuste.id
+    })
+
     alert(`✅ Stock ajustado. Diferencia: ${diferencia > 0 ? '+' : ''}${diferencia} unidades.`)
   }
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { registrarAuditoria } from '../utils/auditoria'
+import { useAuth } from '../context/AuthContext'
 
 export default function NuevaCompra() {
   const navigate = useNavigate()
@@ -15,6 +17,7 @@ export default function NuevaCompra() {
     proveedor_id: '',
     tipo_documento: 'factura',
   })
+  const { usuario } = useAuth()
 
   useEffect(() => {
     async function cargarDatos() {
@@ -142,6 +145,14 @@ export default function NuevaCompra() {
         p_nota: `Compra ${compra.tipo_documento}`
       })
     }
+
+    await registrarAuditoria({
+      usuario,
+      accion: 'CREAR_COMPRA',
+      modulo: 'compras',
+      detalle: `Compra por S/ ${total.toFixed(2)} — ${items.length} productos`,
+      referenciaId: compra.id
+    })
 
     navigate('/compras')
     setGuardando(false)

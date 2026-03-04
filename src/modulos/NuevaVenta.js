@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { registrarAuditoria } from '../utils/auditoria'
+import { useAuth } from '../context/AuthContext'
 
 export default function NuevaVenta() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function NuevaVenta() {
   })
   const [modalProducto, setModalProducto] = useState(null)
   const [usuarios, setUsuarios] = useState([])
+  const { usuario } = useAuth()
 
   useEffect(() => {
     async function cargarDatos() {
@@ -168,6 +171,14 @@ export default function NuevaVenta() {
         p_nota: `Venta ${venta.tipo_comprobante}`
       })
     }
+
+    await registrarAuditoria({
+      usuario,
+      accion: 'CREAR_VENTA',
+      modulo: 'ventas',
+      detalle: `Venta por S/ ${total.toFixed(2)} — ${items.length} productos — ${form.forma_pago}`,
+      referenciaId: venta.id
+    })
 
     navigate('/ventas')
     setGuardando(false)

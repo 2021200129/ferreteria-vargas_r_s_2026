@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { registrarAuditoria } from '../utils/auditoria'
+import { useAuth } from '../context/AuthContext'
 
 export default function EditarProducto() {
   const { id } = useParams()
@@ -9,6 +11,7 @@ export default function EditarProducto() {
   const [guardando, setGuardando] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
   const [form, setForm] = useState(null)
+  const { usuario } = useAuth()
 
   useEffect(() => {
     supabase.from('categorias').select('*').order('nombre').then(({ data }) => setCategorias(data || []))
@@ -65,8 +68,17 @@ export default function EditarProducto() {
       ubicacion: form.ubicacion,
       imagen_url: form.imagen_url || null,
     }).eq('id', id)
-    if (error) alert('Error: ' + error.message)
-    else navigate('/productos')
+    if (error) { alert('Error: ' + error.message) }
+    else {
+      await registrarAuditoria({
+        usuario,
+        accion: 'EDITAR_PRODUCTO',
+        modulo: 'productos',
+        detalle: `Editó: ${form.nombre} (${form.codigo})`,
+        referenciaId: id
+      })
+      navigate('/productos')
+    }
     setGuardando(false)
   }
 
