@@ -20,6 +20,8 @@ export default function Reportes() {
       { data: gastos },
       { data: stockBajo },
       { data: ventasVendedor },
+      { data: detalleMargen },
+      { data: todosProductos },
     ] = await Promise.all([
       supabase.from('ventas').select('*, clientes(nombre)').gte('fecha', inicio).lte('fecha', fin).order('fecha'),
       supabase.from('detalle_ventas').select('*, productos(nombre, codigo), ventas(fecha, total, forma_pago)').gte('ventas.fecha', inicio).lte('ventas.fecha', fin),
@@ -27,6 +29,8 @@ export default function Reportes() {
       supabase.from('gastos').select('*').gte('fecha', inicio).lte('fecha', fin),
       supabase.from('stock').select('cantidad, productos(nombre, stock_minimo, codigo), almacenes(nombre)'),
       supabase.from('ventas').select('total, usuario_id, usuarios(nombre)').gte('fecha', inicio).lte('fecha', fin),
+      supabase.from('detalle_ventas').select('cantidad, precio_unitario, precio_compra, producto_id, productos(nombre, codigo)').gte('ventas.fecha', inicio).lte('ventas.fecha', fin),
+      supabase.from('productos').select('id, nombre, codigo, precio_venta_menor, precio_compra').limit(200),
     ])
 
     // Ventas por día
@@ -83,6 +87,31 @@ export default function Reportes() {
     })
     const topVendedores = Object.values(porVendedor).sort((a, b) => b.total - a.total)
 
+    // Margen por producto
+    const margenPorProducto = {}
+    ;(detalleMargen || []).forEach(d => {
+      const nombre = d.productos?.nombre || 'Sin nombre'
+      const codigo = d.productos?.codigo || ''
+      if (!margenPorProducto[nombre]) margenPorProducto[nombre] = { nombre, codigo, ingresos: 0, costo: 0, cantidad: 0 }
+      const cant = parseFloat(d.cantidad || 0)
+      const precioVenta = parseFloat(d.precio_unitario || 0)
+      const precioCompra = parseFloat(d.precio_compra || 0)
+      margenPorProducto[nombre].ingresos += cant * precioVenta
+      margenPorProducto[nombre].costo += cant * precioCompra
+      margenPorProducto[nombre].cantidad += cant
+    })
+    const topMargen = Object.values(margenPorProducto)
+      .map(p => ({ ...p, ganancia: p.ingresos - p.costo, margenPct: p.ingresos > 0 ? ((p.ingresos - p.costo) / p.ingresos * 100) : 0 }))
+      .filter(p => p.ingresos > 0)
+      .sort((a, b) => b.ganancia - a.ganancia)
+      .slice(0, 10)
+
+    // Productos sin rotación (no vendidos en el mes)
+    const vendidosIds = new Set((detalleMargen || []).map(d => d.producto_id))
+    const sinRotacion = (todosProductos || [])
+      .filter(p => !vendidosIds.has(p.id))
+      .slice(0, 20)
+
     // Stock bajo
     const stockAlerta = (stockBajo || []).filter(s => s.productos && s.cantidad <= (s.productos.stock_minimo || 0))
 
@@ -101,6 +130,8 @@ export default function Reportes() {
       cantVentas: (ventas || []).length,
       cantCompras: (compras || []).length,
       topVendedores,
+      topMargen,
+      sinRotacion,
     })
     setCargando(false)
   }
@@ -280,6 +311,82 @@ export default function Reportes() {
                 </div>
                 <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
                   Ticket promedio: S/ {(v.total / v.ventas).toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* MARGEN POR PRODUCTO */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          💰 Top 10 productos por ganancia real
+        </h3>
+        {datos.topMargen.length === 0 ? (
+          <p style={{ color: '#888', fontSize: '13px' }}>Sin ventas con datos de costo este mes</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f5f5f5' }}>
+                <th style={th}>#</th>
+                <th style={th}>Producto</th>
+                <th style={th}>Ingresos</th>
+                <th style={th}>Costo</th>
+                <th style={th}>Ganancia</th>
+                <th style={th}>Margen %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {datos.topMargen.map((p, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={td}>
+                    <strong style={{ color: '#0f3460' }}>#{i + 1}</strong>
+                  </td>
+                  <td style={td}>
+                    <div style={{ fontSize: '13px' }}>{p.nombre}</div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>{p.codigo} · {p.cantidad} unid.</div>
+                  </td>
+                  <td style={td}>S/ {p.ingresos.toFixed(2)}</td>
+                  <td style={td}>S/ {p.costo.toFixed(2)}</td>
+                  <td style={{ ...td, fontWeight: 'bold', color: '#2ecc71' }}>S/ {p.ganancia.toFixed(2)}</td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ background: '#f0f0f0', borderRadius: '4px', height: '8px', width: '60px' }}>
+                        <div style={{ width: `${Math.min(p.margenPct, 100)}%`, background: p.margenPct >= 30 ? '#2ecc71' : p.margenPct >= 15 ? '#f39c12' : '#e74c3c', height: '100%', borderRadius: '4px' }} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: p.margenPct >= 30 ? '#2ecc71' : p.margenPct >= 15 ? '#f39c12' : '#e74c3c' }}>
+                        {p.margenPct.toFixed(1)}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* PRODUCTOS SIN ROTACIÓN */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          🐌 Productos sin rotación este mes
+        </h3>
+        <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#888' }}>
+          Productos que no tuvieron ninguna venta en {new Date(mes + '-02').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })} — mostrando primeros 20
+        </p>
+        {datos.sinRotacion.length === 0 ? (
+          <p style={{ color: '#2ecc71', fontSize: '13px' }}>✓ Todos los productos tuvieron ventas este mes</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+            {datos.sinRotacion.map((p, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f9f9f9', borderRadius: '6px', fontSize: '13px' }}>
+                <div>
+                  <div>{p.nombre}</div>
+                  <div style={{ fontSize: '11px', color: '#888' }}>{p.codigo}</div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '12px', color: '#888' }}>
+                  S/ {parseFloat(p.precio_venta_menor || 0).toFixed(2)}
                 </div>
               </div>
             ))}
