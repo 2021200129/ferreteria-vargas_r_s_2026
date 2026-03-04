@@ -163,7 +163,28 @@ export default function NuevaCompra() {
         p_costo_unitario: parseFloat(item.precio_unitario),
         p_nota: `Compra ${compra.tipo_documento}`
       })
+
+      // Registrar historial de precio
+      if (form.proveedor_id) {
+        await supabase.from('historial_precios_compra').insert([{
+          producto_id: item.producto_id,
+          proveedor_id: form.proveedor_id,
+          compra_id: compra.id,
+          precio_unitario: parseFloat(item.precio_unitario),
+        }])
+
+        // Actualizar precio_compra en productos si cambió
+        const { data: prodActual } = await supabase
+          .from('productos').select('precio_compra').eq('id', item.producto_id).single()
+        if (prodActual && parseFloat(item.precio_unitario) !== parseFloat(prodActual.precio_compra)) {
+          await supabase.from('productos')
+            .update({ precio_compra: parseFloat(item.precio_unitario) })
+            .eq('id', item.producto_id)
+        }
+      }
     }
+
+
 
     await registrarAuditoria({
       usuario,
